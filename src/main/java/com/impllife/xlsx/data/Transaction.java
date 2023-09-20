@@ -1,25 +1,36 @@
 package com.impllife.xlsx.data;
 
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.StringJoiner;
 
 public class Transaction {
-    private String date;
-    private String time;
+    private Date fullDate;
+    private Date date;
+    private Date time;
     private String category;
     private String dscr;
-    private String sum;
+    private BigDecimal sum;
 
-    public String getDate() {
+    public Date getFullDate() {
+        return fullDate;
+    }
+    public void setFullDate(Date fullDate) {
+        this.fullDate = fullDate;
+    }
+
+    public Date getDate() {
         return date;
     }
-    public void setDate(String date) {
+    public void setDate(Date date) {
         this.date = date;
     }
 
-    public String getTime() {
+    public Date getTime() {
         return time;
     }
-    public void setTime(String time) {
+    public void setTime(Date time) {
         this.time = time;
     }
 
@@ -37,18 +48,18 @@ public class Transaction {
         this.dscr = dscr;
     }
 
-    public String getSum() {
+    public BigDecimal getSum() {
         return sum;
     }
-    public void setSum(String sum) {
+    public void setSum(BigDecimal sum) {
         this.sum = sum;
     }
 
     @Override
     public String toString() {
         return new StringJoiner("|", Transaction.class.getSimpleName() + "[", "]")
-            .add("date='" + date + "'")
-            .add("time='" + time + "'")
+            .add("date='" + new SimpleDateFormat("dd.MM.yyyy").format(date) + "'")
+            .add("time='" + new SimpleDateFormat("HH.mm").format(time) + "'")
             .add("category='" + category + "'")
             .add("dscr='" + dscr + "'")
             .add("sum='" + sum + "'")
@@ -59,8 +70,11 @@ public class Transaction {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+
         Transaction that = (Transaction) o;
 
+        if (getFullDate() != null ? !getFullDate().equals(that.getFullDate()) : that.getFullDate() != null)
+            return false;
         if (getDate() != null ? !getDate().equals(that.getDate()) : that.getDate() != null) return false;
         if (getTime() != null ? !getTime().equals(that.getTime()) : that.getTime() != null) return false;
         if (getCategory() != null ? !getCategory().equals(that.getCategory()) : that.getCategory() != null)
@@ -71,7 +85,8 @@ public class Transaction {
 
     @Override
     public int hashCode() {
-        int result = getDate() != null ? getDate().hashCode() : 0;
+        int result = getFullDate() != null ? getFullDate().hashCode() : 0;
+        result = 31 * result + (getDate() != null ? getDate().hashCode() : 0);
         result = 31 * result + (getTime() != null ? getTime().hashCode() : 0);
         result = 31 * result + (getCategory() != null ? getCategory().hashCode() : 0);
         result = 31 * result + (getDscr() != null ? getDscr().hashCode() : 0);
