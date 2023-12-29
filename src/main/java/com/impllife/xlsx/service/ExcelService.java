@@ -10,5 +10,6 @@ public interface ExcelService {
     void removeSheet(String fileName, String sheetName);
     void createSheetTrn(String fileName, List<Transaction> transactions);
     void addSheetTrn(String fileName, List<Transaction> transactions);
-    void createSheetStat(String fileName, List<Stat> stats);
+    void addSheetStat(String fileName, List<Stat> stats);
+    void createStat();
 }

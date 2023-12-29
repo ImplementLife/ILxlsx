@@ -7,6 +7,14 @@ public class Stat {
     private Date date;
     private BigDecimal sum;
 
+    public Stat() {
+    }
+
+    public Stat(Date date, BigDecimal sum) {
+        this.date = date;
+        this.sum = sum;
+    }
+
     public Date getDate() {
         return date;
     }
