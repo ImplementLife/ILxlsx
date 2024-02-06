@@ -1,11 +1,11 @@
-package com.impllife.xlsx.service;
+package com.impllife.xlsx.service.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
-public class Util {
+public class DateUtil {
     public static Date parseDateByPattern(String data, String pattern) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
         try {

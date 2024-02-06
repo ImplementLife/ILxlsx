@@ -73,12 +73,10 @@ public class Transaction {
 
         Transaction that = (Transaction) o;
 
-        if (getFullDate() != null ? !getFullDate().equals(that.getFullDate()) : that.getFullDate() != null)
-            return false;
+        if (getFullDate() != null ? !getFullDate().equals(that.getFullDate()) : that.getFullDate() != null) return false;
         if (getDate() != null ? !getDate().equals(that.getDate()) : that.getDate() != null) return false;
         if (getTime() != null ? !getTime().equals(that.getTime()) : that.getTime() != null) return false;
-        if (getCategory() != null ? !getCategory().equals(that.getCategory()) : that.getCategory() != null)
-            return false;
+        if (getCategory() != null ? !getCategory().equals(that.getCategory()) : that.getCategory() != null) return false;
         if (getDscr() != null ? !getDscr().equals(that.getDscr()) : that.getDscr() != null) return false;
         return getSum() != null ? getSum().equals(that.getSum()) : that.getSum() == null;
     }
