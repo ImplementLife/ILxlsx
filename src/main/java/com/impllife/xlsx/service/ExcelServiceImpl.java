@@ -2,6 +2,7 @@ package com.impllife.xlsx.service;
 
 import com.impllife.xlsx.Const;
 import com.impllife.xlsx.data.Stat;
+import com.impllife.xlsx.data.StatSrt;
 import com.impllife.xlsx.data.Transaction;
 import com.impllife.xlsx.service.util.DateUtil;
 import org.apache.poi.ss.usermodel.*;
@@ -10,12 +11,15 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static com.impllife.xlsx.service.util.DateUtil.*;
 import static com.impllife.xlsx.service.util.WorkbookUtil.*;
+import static org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK;
 
 public class ExcelServiceImpl implements ExcelService {
     private enum ColumnDefinition {
@@ -87,19 +91,101 @@ public class ExcelServiceImpl implements ExcelService {
     }
 
     @Override
-    public void createStat() {
-        String fileName = Const.WORK_DIR + "/" + "stat.xlsx";
+    public void createByTemplateStat() {
+        Workbook template = read(Const.TEMPLATES_DIR + "template.xlsx");
+        String fileName = Const.WORK_DIR + "tmpl_test.xlsx";
         File resFile = new File(fileName);
         if (resFile.exists()) resFile.delete();
 
-        File dataFolder = new File(Const.WORK_DIR);
-        Set<Transaction> set = new HashSet<>();
-        for (File file : dataFolder.listFiles()) {
-            if (file.isFile()) {
-                set.addAll(readData(file.getAbsolutePath()));
+        List<Transaction> transactions = readAndSortFilesTransactions();
+        Map<String, List<Transaction>> groupByMonth = groupByMonth(fillEmptyDays(transactions));
+
+//        Sheet monthStat = cloneSheet(template, "T1", "Months");
+//        putStat(monthStat, monthStat);
+//        Sheet allStat = cloneSheet(template, "T3", "Months");
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM.yyyy");
+        List<Map.Entry<String, List<Transaction>>> collect = groupByMonth.entrySet().stream().sorted((e1, e2) -> {
+            try {
+                Date date1 = dateFormat.parse(e1.getKey());
+                Date date2 = dateFormat.parse(e2.getKey());
+                return date2.compareTo(date1);
+            } catch (ParseException ex) {
+                ex.printStackTrace();
+                return 0;
             }
+        }).collect(Collectors.toList());
+
+        for (Map.Entry<String, List<Transaction>> entry : collect) {
+            Sheet monthStat = cloneSheet(template, "T2", entry.getKey());
+            List<Transaction> transactionList = entry.getValue();
+            List<StatSrt> monthStatistic = transactionList.stream()
+                .collect(Collectors.groupingBy(Transaction::getDscr))
+                .entrySet().stream()
+                .map(e -> {
+                    StatSrt stat = new StatSrt();
+                    stat.setStr(e.getKey());
+                    BigDecimal sum = e.getValue().stream().map(Transaction::getSum).reduce(BigDecimal.ZERO, BigDecimal::add);
+                    stat.setSum(sum);
+                    return stat;
+                })
+                .sorted(Comparator.comparing(StatSrt::getSum))
+                .collect(Collectors.toList());
+
+            putMonthStat(monthStat, transactionList, monthStatistic);
         }
-        List<Transaction> transactions = set.stream().sorted(Comparator.comparing(Transaction::getFullDate)).collect(Collectors.toList());
+
+
+        removeSheet(template, "T1");
+        removeSheet(template, "T2");
+        removeSheet(template, "T3");
+        write(fileName, template);
+    }
+
+    private void putMonthStat(Sheet sheet, List<Transaction> trnList, List<StatSrt> monthStatistic) {
+        int rowIndex = 0;
+        int colIndex = -1;
+        for (Transaction trn : trnList) {
+            Row row = sheet.getRow(++rowIndex);
+            colIndex = -1;
+
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getFullDate());
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getCategory());
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getDscr());
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getSum().doubleValue());
+        }
+
+        rowIndex = 0;
+        colIndex += 2;
+        for (StatSrt statSrt : monthStatistic) {
+            Row row = sheet.getRow(++rowIndex);
+            int colIndexStat = colIndex;
+
+            row.getCell(++colIndexStat, CREATE_NULL_AS_BLANK).setCellValue(statSrt.getStr());
+            row.getCell(++colIndexStat, CREATE_NULL_AS_BLANK).setCellValue(statSrt.getSum().doubleValue());
+        }
+    }
+
+    private Map<String, List<Transaction>> groupByMonth(List<Transaction> transactions) {
+        return transactions.stream()
+            .collect(Collectors.groupingBy(transaction -> {
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(transaction.getFullDate());
+                int month = calendar.get(Calendar.MONTH) + 1;
+                int year = calendar.get(Calendar.YEAR);
+                return String.format("%02d.%d", month, year);
+            }));
+    }
+
+    @Override
+    public void createStat() {
+        String fileName = Const.WORK_DIR + "stat.xlsx";
+        {
+            File resFile = new File(fileName);
+            if (resFile.exists()) resFile.delete();
+        }
+
+        List<Transaction> transactions = readAndSortFilesTransactions();
 
         List<Stat> stat = getStat(fillEmptyDays(transactions));
 
@@ -107,6 +193,17 @@ public class ExcelServiceImpl implements ExcelService {
         addSheetMonthStat(fileName, monthStat);
         addSheetDaysStat(fileName, stat);
         addSheetTrn(fileName, transactions);
+    }
+
+    private List<Transaction> readAndSortFilesTransactions() {
+        File dataFolder = new File(Const.WORK_DIR);
+        Set<Transaction> set = new HashSet<>();
+        for (File file : dataFolder.listFiles()) {
+            if (file.isFile()) {
+                set.addAll(readData(file.getAbsolutePath()));
+            }
+        }
+        return set.stream().sorted(Comparator.comparing(Transaction::getFullDate)).collect(Collectors.toList());
     }
 
     private void addSheetMonthStat(String fileName, List<Stat> stats) {
@@ -128,6 +225,22 @@ public class ExcelServiceImpl implements ExcelService {
         putTrnData(workbook, transactions);
 
         write(fileName, workbook);
+    }
+
+    private void putStat(Sheet sheet, List<Stat> stats) {
+        int rowIndex = -1;
+        int colIndex = -1;
+        Row row = sheet.getRow(++rowIndex);
+        row.getCell(++colIndex).setCellValue("Date");
+        row.getCell(++colIndex).setCellValue("Sum");
+        for (Stat stat : stats) {
+            row = sheet.getRow(++rowIndex);
+            colIndex = -1;
+
+            Cell dateCell = row.getCell(++colIndex);
+            dateCell.setCellValue(stat.getDate());
+            row.getCell(++colIndex).setCellValue(stat.getSum().doubleValue());
+        }
     }
 
     private void putStat(Workbook workbook, String sheetName, List<Stat> stats) {

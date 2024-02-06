@@ -98,4 +98,10 @@ public final class WorkbookUtil {
         }
         return false;
     }
+
+    public static Sheet cloneSheet(Workbook workbook, String origName, String newName) {
+        Sheet cloneSheet = workbook.cloneSheet(workbook.getSheetIndex(origName));
+        workbook.setSheetName(workbook.getSheetIndex(cloneSheet), newName);
+        return cloneSheet;
+    }
 }

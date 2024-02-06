@@ -6,5 +6,8 @@ import java.util.List;
 
 public interface ExcelService {
     List<Transaction> readData(String fileName);
+
+    void createByTemplateStat();
+
     void createStat();
 }
