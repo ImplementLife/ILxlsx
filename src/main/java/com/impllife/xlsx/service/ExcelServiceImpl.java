@@ -16,7 +16,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.impllife.xlsx.service.res.ResPathGetter.getResPath;
 import static com.impllife.xlsx.service.util.DateUtil.concatDateAndTime;
 import static com.impllife.xlsx.service.util.DateUtil.isSameMonth;
 import static com.impllife.xlsx.service.util.WorkbookUtil.*;
@@ -36,7 +35,7 @@ public class ExcelServiceImpl implements ExcelService {
         Workbook workbook = read(fileName);
         Sheet sheet = workbook.getSheetAt(0);
         List<CellRangeAddress> mergedRegions = sheet.getMergedRegions();
-        List<ColumnDefinition> columnDefinitions = JSONLoader.loadColumnDefinitions(getResPath("map_excel_to_transaction.json"));
+        List<ColumnDefinition> columnDefinitions = JSONLoader.loadColumnDefinitions(Const.MAP_DIR + "map_excel_to_transaction.json");
 
         trnFill: for (Row row : sheet) {
             try {

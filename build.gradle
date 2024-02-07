@@ -23,6 +23,28 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
 
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'com.impllife.xlsx.Boot',
+                'Author': 'ImplementLife'
+        )
+        // Include dependencies in the JAR file
+        dependsOn configurations.runtimeClasspath
+        doFirst {
+            from configurations.runtimeClasspath.findAll { it.exists() }.collect {
+                it.isDirectory() ? it : zipTree(it)
+            }
+        }
+        // Specify duplicate handling strategy
+        duplicatesStrategy = 'exclude'
+
+        // Optionally, you can exclude certain dependencies if needed
+        exclude 'META-INF/*.DSA', 'META-INF/*.SF', 'META-INF/*.RSA'
+
+    }
+}
+
 test {
     useJUnitPlatform()
 }
