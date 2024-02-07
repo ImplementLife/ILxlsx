@@ -4,57 +4,25 @@ import com.impllife.xlsx.Const;
 import com.impllife.xlsx.data.Stat;
 import com.impllife.xlsx.data.StatSrt;
 import com.impllife.xlsx.data.Transaction;
-import com.impllife.xlsx.service.util.DateUtil;
+import com.impllife.xlsx.data.map.ColumnDefinition;
+import com.impllife.xlsx.service.map.JSONLoader;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 
 import java.io.File;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import static com.impllife.xlsx.service.util.DateUtil.*;
+import static com.impllife.xlsx.service.res.ResPathGetter.getResPath;
+import static com.impllife.xlsx.service.util.DateUtil.concatDateAndTime;
+import static com.impllife.xlsx.service.util.DateUtil.isSameMonth;
 import static com.impllife.xlsx.service.util.WorkbookUtil.*;
 import static org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK;
 
 public class ExcelServiceImpl implements ExcelService {
-    private enum ColumnDefinition {
-        DATE            (0,"Date",          (c, t) -> t.setDate(DateUtil.parseDateByPattern(c.getStringCellValue(), "dd.MM.yyyy"))),
-        TIME            (1,"Time",          (c, t) -> t.setTime(DateUtil.parseDateByPattern(c.getStringCellValue(), "HH:mm"))),
-        CATEGORY        (2,"Category",      (c, t) -> t.setCategory(c.getStringCellValue())),
-        DESCRIPTION     (4,"Description",   (c, t) -> t.setDscr(c.getStringCellValue())),
-        SUM             (5,"Sum",           (c, t) -> t.setSum(BigDecimal.valueOf(c.getNumericCellValue()).setScale(2, RoundingMode.CEILING))),
-        ;
-        private final Integer index;
-        private final String name;
-        private final BiConsumer<Cell, Transaction> consumer;
-
-        public void fillValue(Cell cell, Transaction transaction) {
-            consumer.accept(cell, transaction);
-        }
-
-        ColumnDefinition(int index, String name, BiConsumer<Cell, Transaction> consumer) {
-            this.index = index;
-            this.name = name;
-            this.consumer = consumer;
-        }
-        private static ColumnDefinition getInstance(String name) {
-            for (ColumnDefinition value : values()) {
-                if (value.name.equals(name)) return value;
-            }
-            return null;
-        }
-        private static ColumnDefinition getInstance(Integer index) {
-            for (ColumnDefinition value : values()) {
-                if (value.index.equals(index)) return value;
-            }
-            return null;
-        }
-    }
 
     private final static List<String> ignore = new ArrayList<>();
     static {
@@ -68,24 +36,25 @@ public class ExcelServiceImpl implements ExcelService {
         Workbook workbook = read(fileName);
         Sheet sheet = workbook.getSheetAt(0);
         List<CellRangeAddress> mergedRegions = sheet.getMergedRegions();
+        List<ColumnDefinition> columnDefinitions = JSONLoader.loadColumnDefinitions(getResPath("map_excel_to_transaction.json"));
+
         trnFill: for (Row row : sheet) {
             try {
                 Transaction transaction = new Transaction();
-                for (Cell cell : row) {
-                    if (isMergedCell(mergedRegions, cell)) {
-                        continue trnFill;
-                    }
+                for (ColumnDefinition definition : columnDefinitions) {
+                    Cell cell = row.getCell(definition.getIndex());
+                    if (isMergedCell(mergedRegions, cell)) continue trnFill;
 
-                    ColumnDefinition definition = ColumnDefinition.getInstance(cell.getColumnIndex());
-                    if (definition != null) {
-                        definition.fillValue(cell, transaction);
-                    }
+                    String setter = definition.getSetter();
+                    if (setter.equals("setDate"))          transaction.setDate(definition.convert(cell));
+                    else if (setter.equals("setTime"))     transaction.setTime(definition.convert(cell));
+                    else if (setter.equals("setCategory")) transaction.setCategory(definition.convert(cell));
+                    else if (setter.equals("setDscr"))     transaction.setDscr(definition.convert(cell));
+                    else if (setter.equals("setSum"))      transaction.setSum(definition.convert(cell));
                 }
                 transaction.setFullDate(concatDateAndTime(transaction.getDate(), transaction.getTime()));
                 result.add(transaction);
-            } catch (Throwable t) {
-                //not valid row
-            }
+            } catch (Throwable t) { /*not valid row*/ }
         }
         return result;
     }
@@ -93,7 +62,7 @@ public class ExcelServiceImpl implements ExcelService {
     @Override
     public void createByTemplateStat() {
         Workbook template = read(Const.TEMPLATES_DIR + "template.xlsx");
-        String fileName = Const.WORK_DIR + "tmpl_test.xlsx";
+        String fileName = Const.RESULT_DIR + "tmpl_test.xlsx";
         File resFile = new File(fileName);
         if (resFile.exists()) resFile.delete();
 
