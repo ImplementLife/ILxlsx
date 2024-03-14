@@ -3,14 +3,14 @@ package com.impllife.xlsx.data;
 import java.math.BigDecimal;
 import java.util.Date;
 
-public class Stat {
+public class StatByDate {
     private Date date;
     private BigDecimal sum;
 
-    public Stat() {
+    public StatByDate() {
     }
 
-    public Stat(Date date, BigDecimal sum) {
+    public StatByDate(Date date, BigDecimal sum) {
         this.date = date;
         this.sum = sum;
     }

@@ -2,14 +2,14 @@ package com.impllife.xlsx.data;
 
 import java.math.BigDecimal;
 
-public class StatSrt {
+public class StatByString {
     private String str;
     private BigDecimal sum;
 
-    public StatSrt() {
+    public StatByString() {
     }
 
-    public StatSrt(String date, BigDecimal sum) {
+    public StatByString(String date, BigDecimal sum) {
         this.str = date;
         this.sum = sum;
     }
