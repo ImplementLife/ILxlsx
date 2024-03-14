@@ -4,6 +4,7 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -19,16 +20,10 @@ import java.util.function.Consumer;
 public final class WorkbookUtil {
     private WorkbookUtil() {}
 
-    public static Workbook read(String fileName) {
-        try (FileInputStream fis = new FileInputStream(fileName)) {
-            if (fileName.toLowerCase().endsWith("xlsx")) {
-                return new XSSFWorkbook(fis);
-            } else if (fileName.toLowerCase().endsWith("xls")) {
-                return new HSSFWorkbook(fis);
-            } else {
-                throw new IllegalArgumentException("File extension does not support.");
-            }
-        } catch (IOException e) {
+    public static Workbook read(String filePath) {
+        try (FileInputStream fis = new FileInputStream(filePath)) {
+            return WorkbookFactory.create(fis);
+        } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
