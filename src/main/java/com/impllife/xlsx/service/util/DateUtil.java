@@ -2,6 +2,8 @@ package com.impllife.xlsx.service.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -48,5 +50,11 @@ public class DateUtil {
         int month2 = cal2.get(Calendar.MONTH);
 
         return year1 == year2 && month1 == month2;
+    }
+
+    public static String getCurrentDateTime() {
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy_HH-mm-ss");
+        return currentDateTime.format(formatter);
     }
 }

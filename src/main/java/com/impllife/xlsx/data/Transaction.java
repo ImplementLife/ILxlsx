@@ -12,6 +12,7 @@ public class Transaction {
     private String category;
     private String dscr;
     private BigDecimal sum;
+    private String tags;
 
     public Date getFullDate() {
         return fullDate;
@@ -55,6 +56,13 @@ public class Transaction {
         this.sum = sum;
     }
 
+    public String getTags() {
+        return tags;
+    }
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
     @Override
     public String toString() {
         return new StringJoiner("|", Transaction.class.getSimpleName() + "[", "]")
@@ -73,12 +81,13 @@ public class Transaction {
 
         Transaction that = (Transaction) o;
 
-        if (getFullDate() != null ? !getFullDate().equals(that.getFullDate()) : that.getFullDate() != null) return false;
-        if (getDate() != null ? !getDate().equals(that.getDate()) : that.getDate() != null) return false;
-        if (getTime() != null ? !getTime().equals(that.getTime()) : that.getTime() != null) return false;
-        if (getCategory() != null ? !getCategory().equals(that.getCategory()) : that.getCategory() != null) return false;
-        if (getDscr() != null ? !getDscr().equals(that.getDscr()) : that.getDscr() != null) return false;
-        return getSum() != null ? getSum().equals(that.getSum()) : that.getSum() == null;
+        if (getFullDate() != null ? !getFullDate() .equals(that.getFullDate()) : that.getFullDate() != null) return false;
+        if (getDate()     != null ? !getDate()     .equals(that.getDate())     : that.getDate()     != null) return false;
+        if (getTime()     != null ? !getTime()     .equals(that.getTime())     : that.getTime()     != null) return false;
+        if (getCategory() != null ? !getCategory() .equals(that.getCategory()) : that.getCategory() != null) return false;
+        if (getDscr()     != null ? !getDscr()     .equals(that.getDscr())     : that.getDscr()     != null) return false;
+        if (getSum()      != null ? !getSum()      .equals(that.getSum())      : that.getSum()      != null) return false;
+        return getTags() != null ? getTags().equals(that.getTags()) : that.getTags() == null;
     }
 
     @Override

@@ -10,14 +10,14 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.impllife.xlsx.service.util.DateUtil.concatDateAndTime;
-import static com.impllife.xlsx.service.util.DateUtil.isSameMonth;
+import static com.impllife.xlsx.service.util.DateUtil.*;
 import static com.impllife.xlsx.service.util.WorkbookUtil.*;
 import static org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK;
 
@@ -28,13 +28,23 @@ public class ExcelService {
         ignore.add("Зі своєї картки 51**22");
 //        ignore.add("Чудновська Вікторія Леонідівна");
     }
+    private final Map<String, List<ColumnDefinition>> columnDefinitionsMap = new HashMap<>();
+    public ExcelService() {
+        readMappings();
+    }
+    public void readMappings() {
+        columnDefinitionsMap.clear();
+        columnDefinitionsMap.put("mono", JSONLoader.loadColumnDefinitions(Const.MAP_DIR + "mono_input_excel_mappings.json"));
+        columnDefinitionsMap.put("p24", JSONLoader.loadColumnDefinitions(Const.MAP_DIR + "p24_input_excel_mappings.json"));
+    }
 
-    public List<Transaction> readData(String fileName) {
+    public List<Transaction> readData(String fileName, String bank, String tags) {
         List<Transaction> result = new ArrayList<>();
         Workbook workbook = read(fileName);
         Sheet sheet = workbook.getSheetAt(0);
         List<CellRangeAddress> mergedRegions = sheet.getMergedRegions();
-        List<ColumnDefinition> columnDefinitions = JSONLoader.loadColumnDefinitions(Const.MAP_DIR + "map_excel_to_transaction.json");
+        List<ColumnDefinition> columnDefinitions = columnDefinitionsMap.get(bank);
+
 
         trnFill: for (Row row : sheet) {
             try {
@@ -46,11 +56,15 @@ public class ExcelService {
                     String setter = definition.getSetter();
                     if (setter.equals("setDate"))          transaction.setDate(definition.convert(cell));
                     else if (setter.equals("setTime"))     transaction.setTime(definition.convert(cell));
+                    else if (setter.equals("setDateTime")) transaction.setFullDate(definition.convert(cell));
                     else if (setter.equals("setCategory")) transaction.setCategory(definition.convert(cell));
                     else if (setter.equals("setDscr"))     transaction.setDscr(definition.convert(cell));
                     else if (setter.equals("setSum"))      transaction.setSum(definition.convert(cell));
                 }
-                transaction.setFullDate(concatDateAndTime(transaction.getDate(), transaction.getTime()));
+                if (transaction.getFullDate() == null) {
+                    transaction.setFullDate(concatDateAndTime(transaction.getDate(), transaction.getTime()));
+                }
+                transaction.setTags(tags);
                 result.add(transaction);
             } catch (Throwable t) { /*not valid row*/ }
         }
@@ -59,9 +73,17 @@ public class ExcelService {
 
     public void createByTemplateStat() {
         Workbook template = read(Const.TEMPLATES_DIR + "template.xlsx");
-        String resultFileName = Const.RESULT_DIR + "tmpl_test.xlsx";
+        String resultFileName = Const.RESULT_DIR + "stat_" + getCurrentDateTime() + ".xlsx";
         File resFile = new File(resultFileName);
-        if (resFile.exists()) resFile.delete();
+        if (resFile.exists()) {
+            resFile.delete();
+        } else {
+            try {
+                resFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         List<Transaction> transactions = readAndSortFilesTransactions();
         Map<String, List<Transaction>> groupByMonth = groupByMonth(fillEmptyDays(transactions));
@@ -119,10 +141,12 @@ public class ExcelService {
             row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getCategory());
             row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getDscr());
             row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getSum().doubleValue());
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue("");
+            row.getCell(++colIndex, CREATE_NULL_AS_BLANK).setCellValue(trn.getTags());
         }
 
         rowIndex = 0;
-        colIndex += 2;
+        colIndex += 1;
         for (StatSrt statSrt : monthStatistic) {
             Row row = sheet.getRow(++rowIndex);
             int colIndexStat = colIndex;
@@ -163,12 +187,26 @@ public class ExcelService {
     private List<Transaction> readAndSortFilesTransactions() {
         File dataFolder = new File(Const.INPUT_DATA_DIR);
         Set<Transaction> set = new HashSet<>();
+        readAndSortFilesTransactions(dataFolder, set);
+        return set.stream().sorted(Comparator.comparing(Transaction::getFullDate)).collect(Collectors.toList());
+    }
+
+    private void readAndSortFilesTransactions(File dataFolder, Set<Transaction> set) {
         for (File file : dataFolder.listFiles()) {
             if (file.isFile()) {
-                set.addAll(readData(file.getAbsolutePath()));
+                File personFold = file.getParentFile();
+                File bankFold = personFold.getParentFile();
+
+                // Get the directory names as strings
+                String personFoldName = personFold != null ? personFold.getName() : "Unknown";
+                String bankFoldName = bankFold != null ? bankFold.getName() : "Unknown";
+                String tags = String.format("#%s #%s", personFoldName, bankFoldName);
+
+                set.addAll(readData(file.getAbsolutePath(), bankFoldName, tags));
+            } else if (file.isDirectory()) {
+                readAndSortFilesTransactions(file, set);
             }
         }
-        return set.stream().sorted(Comparator.comparing(Transaction::getFullDate)).toList();
     }
 
     private void addSheetMonthStat(String fileName, List<Stat> stats) {
